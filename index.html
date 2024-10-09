@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode Scanner System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    video {
+      width: 300px;
+      height: auto;
+      border: 1px solid #ccc;
+      margin: 20px 0;
+    }
+
+    table {
+      width: 80%;
+      margin: 20px auto;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Barcode Scanner System</h1>
+  <p>Scan a barcode to check in or out</p>
+
+  <video id="camera" autoplay></video>
+
+  <!-- Form to assign barcode to account -->
+  <div>
+    <h3>Assign Barcode to Account</h3>
+    <form id="barcodeAssignmentForm">
+      <label for="accountName">Account Name:</label>
+      <input type="text" id="accountName" placeholder="Enter account name" required>
+
+      <label for="barcodeInput">Barcode:</label>
+      <input type="text" id="barcodeInput" placeholder="Scan or enter barcode" required>
+
+      <button type="submit">Assign Barcode</button>
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Account</th>
+        <th>Barcode</th>
+        <th>Status</th>
+        <th>Last Scan (Date/Time)</th>
+      </tr>
+    </thead>
+    <tbody id="accountTable">
+      <!-- Account rows will be dynamically added here -->
+    </tbody>
+  </table>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <script>
+    let accounts = {};
+    // Function to generate random barcode
+    function generateRandomBarcode() {
+      return Math.floor(100000000000 + Math.random() * 900000000000).toString(); // 12-digit random number
+    }
+    // Function to create 100 accounts with random barcodes
+    function createUsers() {
+      for (let i = 1; i <= 100; i++) {
+        const name = `User ${i}`;
+        const barcode = generateRandomBarcode();
+        accounts[barcode] = {
+          name: name,
+          barcode: barcode, // Store the barcode
+          status: "out",
+          lastScan: "Never"
+        };
+      }
+    }
+    // Call function to create the 100 users with random barcodes
+    createUsers();
+    // Update the accounts table in the HTML
+    function updateAccountTable() {
+      const tableBody = document.getElementById('accountTable');
+      tableBody.innerHTML = ''; // Clear previous data
+      for (const barcode in accounts) {
+        const account = accounts[barcode];
+        const row = `
+          <tr>
+            <td>${account.name}</td>
+            <td>${account.barcode}</td>
+            <td>${account.status}</td>
+            <td>${account.lastScan}</td>
+          </tr>
+        `;
+        tableBody.innerHTML += row;
+      }
+    }
+    // Form submission handler for barcode assignment
+    document.getElementById('barcodeAssignmentForm').addEventListener('submit', function(e) {
+      e.preventDefault(); // Prevent page reload
+      const accountName = document.getElementById('accountName').value;
+      const barcode = document.getElementById('barcodeInput').value;
+      if (accountName && barcode) {
+        accounts[barcode] = {
+          name: accountName,
+          barcode: barcode, // Assign manually input barcode
+          status: "out",
+          lastScan: "Never"
+        };
+        updateAccountTable(); // Refresh the table with new data
+      } else {
+        alert("Please fill in both fields.");
+      }
+      document.getElementById('accountName').value = ''; // Clear input fields
+      document.getElementById('barcodeInput').value = '';
+    });
+    // Barcode scan toggle status function
+    function toggleStatus(barcode) {
+      if (accounts[barcode]) {
+        const account = accounts[barcode];
+        account.status = account.status === "in" ? "out" : "in";
+        account.lastScan = new Date().toLocaleString(); // Add timestamp
+        updateAccountTable();
+      } else {
+        alert("Account not found for barcode: " + barcode);
+      }
+    }
+    // Initialize Quagga.js for barcode scanning
+    Quagga.init({
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: document.querySelector('#camera'), // Camera video element
+      },
+      decoder: {
+        readers: ["code_128_reader"] // Barcode type
+      }
+    }, function(err) {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      console.log("Quagga initialized. Starting...");
+      Quagga.start();
+    });
+    // When a barcode is detected
+    Quagga.onDetected(function(data) {
+      const barcode = data.codeResult.code;
+      console.log("Barcode detected: " + barcode);
+      toggleStatus(barcode); // Toggle account status for scanned barcode
+    });
+    // Initial call to populate the table with the 100 users
+    updateAccountTable();
+  </script>
+
+</body>
+
+</html>
